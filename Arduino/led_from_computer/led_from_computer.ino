@@ -1,38 +1,22 @@
-// Example serial number send: 0000010010001 (length = 13)
-// Corrected-length serial number: 00000100100 (length = 11)
-
 #include <Wire.h>
 
-// Indicate pins that LEDs are attached to
-int led1 = 2;
-int led2 = 3;
-int led3 = 4;
-int led4 = 5;
-int led5 = 6;
-int led6 = 7;
-int led7 = 8;
-int led8 = 9;
-int led9 = 10;
-int led10 = 11;
-int led11 = 12;
+
 
 void ledOn(int, int);
 void ledOff(int, int);
+void partyLights();
 
 // Board setup routine
 void setup()  { 
   Serial.begin(9600);
-  pinMode(led1, OUTPUT);
-  pinMode(led2, OUTPUT);
-  pinMode(led3, OUTPUT);
-  pinMode(led4, OUTPUT);
-  pinMode(led5, OUTPUT);
-  pinMode(led6, OUTPUT);
-  pinMode(led7, OUTPUT);
-  pinMode(led8, OUTPUT);
-  pinMode(led9, OUTPUT);
-  pinMode(led10, OUTPUT);
-  pinMode(led11, OUTPUT);
+  pinMode(2, OUTPUT);
+  pinMode(3, OUTPUT);
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(9, OUTPUT);
 
 }  
 
@@ -44,13 +28,20 @@ void loop(){
     if (Serial.available() >0) {
       char c = Serial.read();  //gets one byte from serial buffer
       readString += c; //makes the string readString
+      readString = readString;
     } 
   }
+  Serial.println(readString);
   //delay(2000);
   if(readString.length() > 0){
     Serial.println(readString);
   }
-  updateLights(readString);
+  if(readString == "2"){
+    partyLights();
+  }
+  else{
+    updateLights(readString);
+  }
 }
 
 void updateLights(String inbound){
@@ -65,10 +56,30 @@ void updateLights(String inbound){
   }
 }
 
+void partyLights(){
+  int y = 0;
+  while (y < 5){
+  int x = 0;
+  while (x < 8){
+    digitalWrite(x+2,HIGH);
+    delay(50);
+    digitalWrite(x+2,LOW);
+    x+=1;
+  }
+  while (x > -1){
+    digitalWrite(x+2,HIGH);
+    delay(50);
+    digitalWrite(x+2,LOW);
+    x-=1;
+  }
+  y+=1;
+  }
+}
+
 void ledOn(int number){
-  digitalWrite(number, HIGH);
+  digitalWrite(number+2, HIGH);
 }
 
 void ledOff(int number){
-  digitalWrite(number, LOW);
+  digitalWrite(number+2, LOW);
 }

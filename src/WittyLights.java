@@ -1,4 +1,25 @@
+/*
+ * WittyLights - by Chris Kuzma
+ * 
+ * This is a proof-of-concept tweetbot that rides atop the Wit API. (For more info go to
+ * http://www.wit.ai) It simulates a series of 8 lights, each of which can be individually
+ * turned on or off using natural language. Twitter is the means of interfacing with the
+ * bot, controlling its virtual lights.
+ * 
+ * You will need to modify the access keys defined in the [Credentials.java] file in order
+ * to run this yourself. That requires both developer keys from Twitter in addition to
+ * a server access token from Wit.
+ * 
+ * As of 11:27p on November 12th, 2014, this is using the latest version of Wit's open
+ * API (version datestamp 20141112).
+ * 
+ * For debugging purposes, there is an initial variable that can be set to 1 to prevent
+ * posting any tweets while modifying and testing the code.
+ */
+
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Scanner;
 
@@ -12,47 +33,36 @@ import twitter4j.TwitterFactory;
 import twitter4j.conf.ConfigurationBuilder;
 
 public class WittyLights{
-	
 	public static void main(String[] args) throws Exception{
+		// Debug mode = 1, Normal mode = 0
+		int debug = 0;
 		
 		// Make some objects
-		ConnectionToWit wit = new ConnectionToWit();
-		ProcessWitJson processor = new ProcessWitJson();
-		ConnectionToArduino arduino = new ConnectionToArduino();
+		Credentials credentials = new Credentials(); // To prevent me from sharing my own keys...
+		WitQuery wit = new WitQuery();
+		WitResponse processor = new WitResponse();
 		
-		// Ask about connecting to Arduino
-		int arduinoBinary = 0;
-    	System.out.print("\nWittyLights v2.0\n---by Chris Kuzma\n\nDo you want to connect to an Arduino? Enter Y or N: ");
-    	Scanner input = new Scanner(System.in);
-    	String arduinoOrNot = input.nextLine();
-    	if(arduinoOrNot.equals("y") || arduinoOrNot.equals("Y")){
-			arduinoBinary = 1;
-			try {
-				arduino.initialize();
-			} catch (Exception e) {
-				System.out.println("Unable to connect to Arduino.");
-			}
-		}
-		if(arduinoOrNot.equals("n") || arduinoOrNot.equals("N")){
-			arduinoBinary = 0;
-		}
+		// Title screen
+    	System.out.print("\nWittyLights v2.0\n---by Chris Kuzma\n");
+
 		
 		// Twitter authentication garbage
 		ConfigurationBuilder cb = new ConfigurationBuilder();
-	    cb.setDebugEnabled(true)
-	          .setOAuthConsumerKey("BJdtbS7GkjmoXKhsTZmSDAnj6")
-	          .setOAuthConsumerSecret("hH7AWbesIwHbdprzXlzQ09QAaP7kZ9Jhi7ZiLIfRZo57lCgMH1")
-	          .setOAuthAccessToken("2835411379-1pOxY5y9kmlrpBlVn2CwLvdMiBC8ImFy0WPCQUB")
-	          .setOAuthAccessTokenSecret("dduwhk21tyeAhYgvyNAhqJDI36wLmIiUXcHrqs8Mdk1nP");
+	    cb.setDebugEnabled(true);
+	    cb.setOAuthConsumerKey(credentials.twitterConsumerKey);
+	    cb.setOAuthConsumerSecret(credentials.twitterConsumerSecret);
+	    cb.setOAuthAccessToken(credentials.twitterAccessToken);
+	    cb.setOAuthAccessTokenSecret(credentials.twitterAccessSecret);
 	    TwitterFactory tf = new TwitterFactory(cb.build());
 	    Twitter twitter = tf.getInstance();
 	    // End twitter authentication garbage
+	    
 	    int x = 0;
 	    long oldTweetId = 0;
 	    while (x < 1) {
 			try {
 				// Find most recent tweet
-				Query query = new Query("@WittyDevices");
+				Query query = new Query("@WittyDevices"); //Change this to the Twitter handle of your Twitterbot
 				QueryResult result = twitter.search(query);
 				List<Status> tweets = result.getTweets();
 				Status recentTweet = tweets.get(0);
@@ -60,7 +70,8 @@ public class WittyLights{
 				String tweetText = recentTweet.getText();
 				long newTweetId = recentTweet.getId();
 				// End most recent tweet search
-				// Check for a unique ID, query Wit
+				
+				// Check for a unique ID, query Wit if unique from last seen tweet
 				if (newTweetId != oldTweetId){
 					System.out.println("USER: @" + userName + " TWEET: " + tweetText);
 					System.out.println("Sending data to Wit...");
@@ -74,8 +85,13 @@ public class WittyLights{
 						StatusUpdate confirmTweet = new StatusUpdate(updateTweet);
 						confirmTweet.inReplyToStatusId(newTweetId);
 						try {
-							twitter.updateStatus(confirmTweet);
-							System.out.println("Tweeted successfully.");
+							if (debug == 0){
+								twitter.updateStatus(updateTweet);
+								System.out.println("Tweeted command confirmation.");
+							}
+							else{
+								System.out.println("DEBUG MODE: Skipped command confirmation tweet.");
+							}
 						} catch (Exception e1) {
 							System.out.println("Unable to tweet.");
 						}
@@ -84,34 +100,34 @@ public class WittyLights{
 							try {
 								StatusUpdate reply = new StatusUpdate("@" + userName + " Sorry, but that command was not understood. Try again!");
 								reply.inReplyToStatusId(newTweetId);
-								twitter.updateStatus(reply);
-								
-								System.out.println("Tweeted failure message successfully.");
+								if (debug == 0){
+									twitter.updateStatus(reply);
+									System.out.println("Tweeted failure message.");
+								}
+								else{
+									System.out.println("DEBUG MODE: Skipped failure message tweet.");
+								}
 							} catch (Exception e1) {
 								System.out.println("Unable to tweet.");
 							}
 						}
 						
-						if (arduinoBinary == 1){
-							try {
-								arduino.sendData(virtualBoard);
-							} catch (Exception e) {
-								System.out.println("Unable to send data to Arduino.");
-							}
-						}
+
 						oldTweetId = newTweetId;
 					} catch (Exception e) {
 						System.out.println("Error. Probably unable to reach Wit.");
 						
 					}
 				}
-				// End ID check
+				// End unique ID check and response
 				
 			} catch (Exception e) {
-				System.out.println("Founds no tweets / Twitter is down.");
+				// Just in case we can't get to Twitter / find any new tweets to analyze... let's get some debug info
+				String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
+				System.out.println(timeStamp + "- Founds no tweets / Twitter is down.");
 			}
-			// Delay
-			Thread.sleep(5000);
+			
+			Thread.sleep(10000); // Delay in ms
 		}
 	}
 }

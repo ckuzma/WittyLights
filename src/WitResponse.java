@@ -5,9 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-public class ProcessWitJson {
-	private int[] virtualBoard = {0,0,0,0,0,0,0,0,0,0,0,0,0};
-	public String theBoard = "0000000000000";
+public class WitResponse {
+	private int[] virtualBoard = {0,0,0,0,0,0,0,0,0,0};
+	public String theBoard = "00000000";
 	private int continueToggle = 1;
 	
 	public String updateVirtualLights(String incomingJson) throws IOException{

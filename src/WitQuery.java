@@ -5,9 +5,11 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
 
-public class ConnectionToWit{
-	private String authToken = "";
-	private String witUrl = "https://api.wit.ai/message?v=20140915&q=";
+public class WitQuery{
+	Credentials credentials = new Credentials(); // To prevent me sharing my own keys...
+	
+	private String authToken = credentials.witAccessKey;
+	private String witUrl = "https://api.wit.ai/message?v=20141112&q=";
 	
 	public String parseQuery(String userCommand) throws IOException{
 		String userQuery = URLEncoder.encode(userCommand, "UTF-8");
